@@ -27,8 +27,8 @@ class KeyboardMonitor {
         
         guard let eventTap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
-            place: .tailAppendEventTap, // 在系统处理完事件后再处理
-            options: .defaultTap,
+            place: .headInsertEventTap,
+            options: .listenOnly, // 只监听，不拦截
             eventsOfInterest: eventMask,
             callback: { (proxy, type, event, refcon) -> Unmanaged<CGEvent>? in
                 KeyboardMonitor.shared.handleKeyEvent(event, type: type)
@@ -49,7 +49,7 @@ class KeyboardMonitor {
         
         logger.log("开始键盘监控")
         
-        DispatchQueue.global(qos: .utility).async { // 使用 utility 优先级避免影响主线程
+        DispatchQueue.global(qos: .utility).async {
             CFRunLoopRun()
         }
     }
@@ -66,16 +66,18 @@ class KeyboardMonitor {
         switch type {
         case .keyDown:
             let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
-            keyStats[keyCode, default: 0] += 1
-            logger.log("按键事件：keyCode=\(keyCode), count=\(keyStats[keyCode] ?? 0)")
-            saveStats()
+            // 忽略功能键和系统快捷键
+            if !isSystemKey(keyCode) {
+                keyStats[keyCode, default: 0] += 1
+                logger.log("按键事件：keyCode=\(keyCode), count=\(keyStats[keyCode] ?? 0)")
+                saveStats()
+            }
         case .flagsChanged:
-            // 处理修饰键（如 Shift、Control 等）
             let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
             let flags = event.flags
             
             // 只在修饰键按下时计数
-            if !flags.isEmpty {
+            if !flags.isEmpty && !isSystemKey(keyCode) {
                 keyStats[keyCode, default: 0] += 1
                 logger.log("修饰键事件：keyCode=\(keyCode), flags=\(flags.rawValue), count=\(keyStats[keyCode] ?? 0)")
                 saveStats()
@@ -83,6 +85,19 @@ class KeyboardMonitor {
         default:
             break
         }
+    }
+    
+    private func isSystemKey(_ keyCode: Int) -> Bool {
+        // 系统保留的键码，比如电源键、亮度调节等
+        let systemKeyCodes = Set([
+            0x7F, // 电源键
+            0x91, // 亮度降低
+            0x90, // 亮度提高
+            0x6F, // F13
+            0x70, // F14
+            0x71  // F15
+        ])
+        return systemKeyCodes.contains(keyCode)
     }
     
     private func checkAccessibilityPermissions() -> Bool {
