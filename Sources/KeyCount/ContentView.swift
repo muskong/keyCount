@@ -14,6 +14,9 @@ struct ContentView: View {
     @State private var totalKeystrokes: Int = 0
     @State private var selectedTimeRange: TimeRange = .today
     @State private var searchText: String = ""
+    @State private var showingCleanupAlert = false
+    @State private var cleanupDays: Int = 30
+    @State private var showingCleanupConfirmation = false
     
     enum TimeRange: String, CaseIterable {
         case today = "今天"
@@ -108,8 +111,12 @@ struct ContentView: View {
             
             HStack {
                 Button("重置统计") {
-                    KeyboardMonitor.shared.resetStats()
-                    updateStats()
+                    showingCleanupConfirmation = true
+                }
+                .padding()
+                
+                Button("清理数据") {
+                    showingCleanupAlert = true
                 }
                 .padding()
                 
@@ -128,10 +135,31 @@ struct ContentView: View {
         .onDisappear {
             stopTimer()
         }
+        // 清理数据对话框
+        .alert("清理历史数据", isPresented: $showingCleanupAlert) {
+            TextField("保留天数", value: $cleanupDays, formatter: NumberFormatter())
+            Button("取消", role: .cancel) { }
+            Button("清理") {
+                DatabaseManager.shared.cleanupOldData(olderThan: cleanupDays)
+                updateStats()
+            }
+        } message: {
+            Text("请输入要保留的天数，将删除此天数之前的所有数据")
+        }
+        // 重置确认对话框
+        .alert("确认重置", isPresented: $showingCleanupConfirmation) {
+            Button("取消", role: .cancel) { }
+            Button("重置", role: .destructive) {
+                KeyboardMonitor.shared.resetStats()
+                updateStats()
+            }
+        } message: {
+            Text("确定要重置所有统计数据吗？此操作不可恢复。")
+        }
     }
     
     private func updateStats() {
-        let rawStats = KeyboardMonitor.shared.getStats()
+        let rawStats = KeyboardMonitor.shared.getStats(timeRange: selectedTimeRange)
         stats = KeyboardLayout.getAllKeys().map { item in
             KeyStatItem(
                 id: item.id,

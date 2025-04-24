@@ -3,12 +3,10 @@ import Carbon
 
 class KeyboardMonitor {
     static let shared = KeyboardMonitor()
-    private var keyStats: [Int: Int] = [:] // keyCode: count
-    private var eventTap: CFMachPort?
     private let logger = Logger.shared
+    private var eventTap: CFMachPort?
     
     private init() {
-        loadStats()
         logger.log("键盘监控器初始化")
     }
     
@@ -68,9 +66,8 @@ class KeyboardMonitor {
             let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
             // 忽略功能键和系统快捷键
             if !isSystemKey(keyCode) {
-                keyStats[keyCode, default: 0] += 1
-                logger.log("按键事件：keyCode=\(keyCode), count=\(keyStats[keyCode] ?? 0)")
-                saveStats()
+                DatabaseManager.shared.incrementKeyCount(keyCode)
+                logger.log("按键事件：keyCode=\(keyCode)")
             }
         case .flagsChanged:
             let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
@@ -78,9 +75,8 @@ class KeyboardMonitor {
             
             // 只在修饰键按下时计数
             if !flags.isEmpty && !isSystemKey(keyCode) {
-                keyStats[keyCode, default: 0] += 1
-                logger.log("修饰键事件：keyCode=\(keyCode), flags=\(flags.rawValue), count=\(keyStats[keyCode] ?? 0)")
-                saveStats()
+                DatabaseManager.shared.incrementKeyCount(keyCode)
+                logger.log("修饰键事件：keyCode=\(keyCode), flags=\(flags.rawValue)")
             }
         default:
             break
@@ -107,26 +103,12 @@ class KeyboardMonitor {
         return result
     }
     
-    func saveStats() {
-        let defaults = UserDefaults.standard
-        defaults.set(keyStats, forKey: "KeyStats")
-        logger.log("保存按键统计数据")
-    }
-    
-    func getStats() -> [Int: Int] {
-        return keyStats
+    func getStats(timeRange: TimeRange = .today) -> [Int: Int] {
+        return DatabaseManager.shared.getStats(timeRange: timeRange)
     }
     
     func resetStats() {
-        keyStats.removeAll()
-        saveStats()
+        DatabaseManager.shared.resetStats()
         logger.log("重置按键统计数据")
-    }
-    
-    func loadStats() {
-        if let savedStats = UserDefaults.standard.dictionary(forKey: "KeyStats") as? [Int: Int] {
-            keyStats = savedStats
-            logger.log("加载按键统计数据：\(keyStats.count) 个按键记录")
-        }
     }
 } 

@@ -11,11 +11,15 @@ let package = Package(
     products: [
         .executable(name: "KeyCount", targets: ["KeyCount"])
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.14.1")
+    ],
     targets: [
         .executableTarget(
             name: "KeyCount",
-            dependencies: [],
+            dependencies: [
+                .product(name: "SQLite", package: "SQLite.swift")
+            ],
             path: "Sources"
         )
     ]
