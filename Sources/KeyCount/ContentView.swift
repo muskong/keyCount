@@ -13,10 +13,19 @@ struct ContentView: View {
     @State private var timer: Timer?
     @State private var totalKeystrokes: Int = 0
     @State private var selectedTimeRange: TimeRange = .today
+    @State private var searchText: String = ""
     
     enum TimeRange: String, CaseIterable {
         case today = "今天"
         case allTime = "全部"
+    }
+    
+    var filteredStats: [KeyStatItem] {
+        if searchText.isEmpty {
+            return stats.filter { $0.count > 0 }
+        } else {
+            return stats.filter { $0.count > 0 && $0.keyName.localizedCaseInsensitiveContains(searchText) }
+        }
     }
     
     var body: some View {
@@ -47,33 +56,55 @@ struct ContentView: View {
             }
             .padding(.horizontal)
             
-            if #available(macOS 13.0, *) {
-                ScrollView {
-                    Chart {
-                        ForEach(stats.filter { $0.count > 0 }.sorted(by: { $0.count > $1.count })) { stat in
-                            BarMark(
-                                x: .value("次数", stat.count),
-                                y: .value("按键", stat.keyName)
-                            )
-                        }
+            // 搜索框
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.gray)
+                TextField("搜索按键", text: $searchText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.gray)
                     }
-                    .frame(height: CGFloat(stats.filter { $0.count > 0 }.count * 25 + 50))
-                    .padding()
-                }
-            } else {
-                List {
-                    ForEach(stats.sorted(by: { $0.count > $1.count })) { stat in
-                        HStack {
-                            Text(stat.keyName)
-                                .frame(width: 100, alignment: .leading)
-                            Spacer()
-                            Text("\(stat.count)")
-                                .monospacedDigit()
-                        }
-                        .opacity(stat.count > 0 ? 1 : 0.5)
-                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
+            .padding(.horizontal)
+            
+            // 按键统计列表
+            List {
+                ForEach(filteredStats.sorted(by: { $0.count > $1.count })) { stat in
+                    HStack {
+                        Text(stat.keyName)
+                            .frame(width: 100, alignment: .leading)
+                            .font(.system(.body, design: .monospaced))
+                        
+                        // 进度条
+                        GeometryReader { geometry in
+                            let maxCount = filteredStats.map { $0.count }.max() ?? 1
+                            let width = CGFloat(stat.count) / CGFloat(maxCount) * geometry.size.width
+                            
+                            ZStack(alignment: .leading) {
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.2))
+                                Rectangle()
+                                    .fill(Color.blue)
+                                    .frame(width: width)
+                            }
+                            .cornerRadius(4)
+                        }
+                        .frame(height: 20)
+                        
+                        // 次数
+                        Text("\(stat.count)")
+                            .frame(width: 80, alignment: .trailing)
+                            .font(.system(.body, design: .monospaced))
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+            .listStyle(PlainListStyle())
             
             HStack {
                 Button("重置统计") {
@@ -88,7 +119,7 @@ struct ContentView: View {
                 .padding()
             }
         }
-        .frame(width: 600, height: 600)
+        .frame(minWidth: 600, minHeight: 400)
         .onAppear {
             stats = KeyboardLayout.getAllKeys()
             updateStats()

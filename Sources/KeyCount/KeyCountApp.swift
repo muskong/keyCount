@@ -27,6 +27,7 @@ struct KeyCountApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     var window: NSWindow?
+    private var localEventMonitor: Any?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusBarItem()
@@ -36,7 +37,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         KeyboardMonitor.shared.loadStats()
         
         // 注册全局快捷键
-        registerGlobalHotkeys()
+        setupEventMonitor()
         
         // 直接显示统计窗口
         showStats()
@@ -52,18 +53,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(withTitle: "显示统计", action: #selector(showStats), keyEquivalent: "s")
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(withTitle: "退出", action: #selector(quit), keyEquivalent: "q")
+        menu.addItem(withTitle: "退出", action: #selector(NSApplication.shared.terminate), keyEquivalent: "q")
         
         statusItem?.menu = menu
     }
     
-    private func registerGlobalHotkeys() {
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+    private func setupEventMonitor() {
+        localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "q" {
-                self.quit()
+                NSApplication.shared.terminate(self)
                 return nil
             }
             return event
+        }
+    }
+    
+    deinit {
+        if let monitor = localEventMonitor {
+            NSEvent.removeMonitor(monitor)
         }
     }
     
@@ -90,14 +97,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
-    @objc private func quit() {
-        KeyboardMonitor.shared.saveStats()
-        NSApplication.shared.terminate(nil)
-    }
-    
-    func applicationWillTerminate(_ notification: Notification) {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // 保存统计数据
         KeyboardMonitor.shared.saveStats()
+        // 停止键盘监控
+        KeyboardMonitor.shared.stopMonitoring()
+        return .terminateNow
     }
 }
 
