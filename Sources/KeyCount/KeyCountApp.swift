@@ -4,15 +4,10 @@ import Carbon
 @main
 struct KeyCountApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @State private var isWindowVisible = false
     
     var body: some Scene {
         WindowGroup {
-            if isWindowVisible {
-                ContentView()
-            } else {
-                EmptyView()
-            }
+            ContentView()
         }
         .windowStyle(HiddenTitleBarWindowStyle())
         .commands {
@@ -43,6 +38,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // 注册全局快捷键
         registerGlobalHotkeys()
+        
+        // 直接显示统计窗口
+        showStats()
     }
     
     private func setupStatusBarItem() {
@@ -87,6 +85,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window?.center()
             window?.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
+            
+            // 设置窗口代理以处理关闭事件
+            window?.delegate = self
         }
     }
     
@@ -98,5 +99,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // 保存统计数据
         KeyboardMonitor.shared.saveStats()
+    }
+}
+
+// 添加窗口代理扩展
+extension AppDelegate: NSWindowDelegate {
+    func windowWillClose(_ notification: Notification) {
+        // 窗口关闭时只是隐藏，不退出应用
+        window = nil
     }
 } 
