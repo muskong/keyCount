@@ -42,8 +42,8 @@ class DatabaseManager {
                 table.column(lastUpdated)
                 table.column(date)
                 
-                // 创建复合唯一索引
-                table.uniqueKey([keyCode, date])
+                // 创建复合索引
+                table.unique(keyCode, date)
             })
             
         } catch {
@@ -59,9 +59,8 @@ class DatabaseManager {
             
             // 尝试更新现有记录
             let record = keyStats.filter(self.keyCode == keyCode && date == today)
-            let count = try db.pluck(record)
             
-            if let existingCount = count {
+            if try db.pluck(record) != nil {
                 // 更新现有记录
                 try db.run(record.update(
                     self.count += 1,

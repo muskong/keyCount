@@ -33,9 +33,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusBarItem()
         KeyboardMonitor.shared.startMonitoring()
         
-        // 加载保存的统计数据
-        KeyboardMonitor.shared.loadStats()
-        
         // 注册全局快捷键
         setupEventMonitor()
         
@@ -47,7 +44,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: "KeyCount")
+            if let image = NSImage(named: "MenuBarIcon") {
+                image.isTemplate = true // 支持深色模式
+                button.image = image
+            } else {
+                // 如果自定义图标加载失败，使用系统图标作为后备
+                button.image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: "KeyCount")
+            }
         }
         
         let menu = NSMenu()
@@ -98,8 +101,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        // 保存统计数据
-        KeyboardMonitor.shared.saveStats()
         // 停止键盘监控
         KeyboardMonitor.shared.stopMonitoring()
         return .terminateNow

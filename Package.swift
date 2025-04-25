@@ -20,7 +20,14 @@ let package = Package(
             dependencies: [
                 .product(name: "SQLite", package: "SQLite.swift")
             ],
-            path: "Sources"
+            path: "Sources",
+            resources: [
+                .process("KeyCount/Assets.xcassets"),
+                .process("KeyCount/Info.plist")
+            ],
+            swiftSettings: [
+                .unsafeFlags(["-enable-bare-slash-regex"])
+            ]
         )
     ]
 )

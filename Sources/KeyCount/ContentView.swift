@@ -18,11 +18,6 @@ struct ContentView: View {
     @State private var cleanupDays: Int = 30
     @State private var showingCleanupConfirmation = false
     
-    enum TimeRange: String, CaseIterable {
-        case today = "今天"
-        case allTime = "全部"
-    }
-    
     var filteredStats: [KeyStatItem] {
         if searchText.isEmpty {
             return stats.filter { $0.count > 0 }
