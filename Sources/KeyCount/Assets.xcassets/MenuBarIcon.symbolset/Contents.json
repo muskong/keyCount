@@ -1,12 +1,12 @@
 {
-    "info": {
-        "author": "xcode",
-        "version": 1
-    },
-    "symbols": [
-        {
-            "filename": "menubar.svg",
-            "idiom": "universal"
-        }
-    ]
+  "info": {
+    "author": "russell",
+    "version": 1
+  },
+  "symbols": [
+    {
+      "filename": "",
+      "idiom": "universal"
+    }
+  ]
 }
